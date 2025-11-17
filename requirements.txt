@@ -1,8 +1,5 @@
 prophet==1.1.4
-pandas
-numpy
-streamlit
+numpy==1.24.4
+pandas==1.5.3
 plotly
-scikit-learn
-matplotlib
-seaborn
+streamlit

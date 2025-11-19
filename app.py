@@ -7,14 +7,15 @@ import numpy as np
 from prophet import Prophet
 from prophet.plot import plot_plotly
 import plotly.offline as py
-from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.metrics import mean_absolute_error, mean_squared_error, accuracy_score, silhouette_score, classification_report
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import accuracy_score
-
 from sklearn.linear_model import LinearRegression
 from scipy.stats import zscore
+from sklearn.cluster import KMeans
+
+
 
 
 st.set_page_config(page_title="Supermarket Dashboard", layout="wide")
@@ -23,8 +24,6 @@ st.set_page_config(page_title="Supermarket Dashboard", layout="wide")
 def load_fe():
     with open("fe.html", "r", encoding="utf-8") as f:
         st.markdown(f.read(), unsafe_allow_html=True)
-
-
 load_fe()
 
 
@@ -371,12 +370,6 @@ if uploaded:
 
     summary, actions = generate_insights(df_filtered)
 
-
-
-    
-
-    
-   
     #==========================
     # KPIs
     total_sales = df_filtered["Sales"].sum()
@@ -519,7 +512,7 @@ if uploaded:
     
         
 
-    t1, t2,t3 = st.tabs(["Dự báo doanh thu", "Dự đoán khách hàng rời đi","code thêm machine learning ở đây"])
+    t1, t2,t3, t4, t5, = st.tabs(["Dự báo doanh thu", "Dự đoán khách hàng rời đi","Phân nhóm khách","Dự báo theo nhóm khách hàng","2"])
 
     with t1:
         st.subheader("Dự báo doanh thu 90 ngày tiếp theo (Prophet)")
@@ -585,6 +578,17 @@ if uploaded:
 
         st.plotly_chart(fig_t1)
 
+        forecast_total = forecast_90_plot['Sales'].sum()
+        recent_avg = train['y'].tail(4).mean() * 3 
+
+        st.subheader("Lời khuyên tổng thể dựa trên dự báo 90 ngày")
+        if forecast_total > recent_avg * 1.05:
+            st.markdown("- Dự báo doanh thu tăng: duy trì chiến lược hiện tại và chuẩn bị mở rộng hàng tồn kho.")
+        elif forecast_total < recent_avg * 0.95:
+            st.markdown("- Dự báo doanh thu giảm: cân nhắc chiến dịch khuyến mãi, giữ chân khách hàng và giảm tồn kho.")
+        else:
+            st.markdown("- Dự báo doanh thu ổn định: tiếp tục chăm sóc khách hàng và theo dõi sát thị trường.")
+
     with t2:
         st.subheader("Churn Prediction")
 
@@ -633,10 +637,6 @@ if uploaded:
         
         rfm['Churn_Label_ML'] = rfm['Churn_Prob'].apply(churn_risk_label)
 
-        #độ chính xác 
-        y_pred_test = clf.predict(X_test)
-        accuracy = accuracy_score(y_test, y_pred_test) * 100
-        st.write(f"**Độ chính xác của mô hình:** {accuracy:.2f}%")
 
         #Count số khách
         risk_count = rfm.groupby('Churn_Label_ML')['Customer ID'].nunique().reset_index()
@@ -664,15 +664,153 @@ if uploaded:
             'Monetary(tiền đã chi)',
             'Churn_Label_ML'
         ]])
+        #Lời khuyên
+        churn_rate = rfm['Churn'].mean()
+        st.subheader("Lời khuyên")
+        if churn_rate < 0.2:
+            st.markdown("- Tỷ lệ rời bỏ thấp: duy trì chăm sóc và ưu đãi định kỳ")
+        elif churn_rate < 0.5:
+            st.markdown("- Tỷ lệ rời bỏ trung bình: tăng cường chăm sóc khách hàng tiềm năng, gửi ưu đãi")
+        else:
+            st.markdown("- Tỷ lệ rời bỏ cao: tập trung chiến dịch kích cầu, ưu đãi hấp dẫn, giữ chân khách hàng quan trọng")
     with t3:
-        st.write("code thêm ở đây")
+        st.subheader("Customer Segmentation (KMeans)")
+        #Chọn theo hành vi mua hàng: Tổng doanh số, tổng số lượng, tổng lợi nhuận, trung bình discount, số đơn hàng
+        customer_features = df.groupby('Customer ID').agg({
+            'Sales': 'sum',
+            'Quantity': 'sum',
+            'Profit': 'sum',
+            'Discount': 'mean',
+            'Order ID': 'count'
+        }).rename(columns={'Order ID':'Num_Orders'}).reset_index()
 
+        st.write("Dữ liệu tổng hợp theo khách hàng:")
+        st.dataframe(customer_features.head(10))
+
+        #Chuẩn hóa dữ liệu
+        scaler = StandardScaler()
+        features_scaled = scaler.fit_transform(customer_features[['Sales','Quantity','Profit','Discount','Num_Orders']])
+        
+        kmeans = KMeans(n_clusters=2, random_state=42)
+        customer_features['Cluster'] = kmeans.fit_predict(features_scaled)
+
+        # --- Gán nhãn dễ hiểu ---
+        cluster_summary = customer_features.groupby('Cluster')['Sales'].mean().reset_index()
+        if cluster_summary.loc[0,'Sales'] > cluster_summary.loc[1,'Sales']:
+            cluster_mapping = {0:'Mua nhiều', 1:'Mua ít'}
+        else:
+            cluster_mapping = {0:'Mua ít', 1:'Mua nhiều'}
+        customer_features['Cluster_Label'] = customer_features['Cluster'].map(cluster_mapping)
+
+        st.subheader("Thống kê trung bình theo cluster")
+        st.table(customer_features.groupby('Cluster_Label')[['Sales','Profit','Quantity','Num_Orders']].mean())
+
+        fig_t3 = px.scatter(
+            customer_features,
+            x='Sales',
+            y='Profit',
+            color='Cluster_Label',
+            hover_data=['Customer ID','Quantity','Num_Orders'],
+            title='Customer Segmentation (Sales vs Profit)'
+        )
+        st.plotly_chart(fig_t3, use_container_width=True)
+
+        # Tạo lời khuyên dựa trên Profit & Sales
+        cluster_summary = customer_features.groupby('Cluster_Label')[['Sales','Profit']].mean().reset_index()
+
+        # Lời khuyên tổng thể
+        advice_summary = []
+
+        for i, row in cluster_summary.iterrows():
+            if row['Sales'] >= cluster_summary['Sales'].mean() and row['Profit'] >= cluster_summary['Profit'].mean():
+                advice_summary.append(f"Nhóm {row['Cluster_Label']}: Duy trì ưu đãi, chăm sóc khách hàng đặc biệt")
+            elif row['Sales'] < cluster_summary['Sales'].mean() and row['Profit'] < cluster_summary['Profit'].mean():
+                advice_summary.append(f"Nhóm {row['Cluster_Label']}: Kích cầu bằng ưu đãi, voucher, email marketing")
+            elif row['Sales'] < cluster_summary['Sales'].mean() and row['Profit'] >= cluster_summary['Profit'].mean():
+                advice_summary.append(f"Nhóm {row['Cluster_Label']}: Khuyến khích mua thêm, upsell sản phẩm")
+            else:
+                advice_summary.append(f"Nhóm {row['Cluster_Label']}: Tối ưu giá và chiết khấu để tăng lợi nhuận")
+
+        # Hiển thị tổng hợp
+        st.subheader("Lời khuyên cho từng nhóm")
+        for advice in advice_summary:
+            st.markdown(f"- {advice}")
+    with t4:
+        st.subheader("Dự báo doanh thu theo phân khúc khách hàng (RandomForestRegressor)")
+
+        # --- Gộp theo tuần và phân khúc
+        weekly_segment_sales = df.groupby([pd.Grouper(key='Order Date', freq='W'), 'Segment'])['Sales'].sum().reset_index()
+        weekly_segment_sales.rename(columns={'Order Date':'ds','Sales':'y'}, inplace=True)
+
+        # --- Train-test theo thời gian
+        last_date = weekly_segment_sales['ds'].max()
+        test_start = last_date - pd.Timedelta(weeks=4)   # 4 tuần cuối test
+        train_df = weekly_segment_sales[weekly_segment_sales['ds'] <= test_start]
+        test_df  = weekly_segment_sales[weekly_segment_sales['ds'] > test_start]
+
+        # --- Features: tuần số (ordinal) + one-hot segment
+        train_df['Week_Num'] = (train_df['ds'] - train_df['ds'].min()).dt.days // 7
+        test_df['Week_Num']  = (test_df['ds'] - train_df['ds'].min()).dt.days // 7
+
+        X_train = pd.get_dummies(train_df[['Week_Num','Segment']], drop_first=True)
+        y_train = train_df['y']
+        X_test  = pd.get_dummies(test_df[['Week_Num','Segment']], drop_first=True)
+        y_test  = test_df['y']
+
+        # --- Đảm bảo cùng cột
+        X_test = X_test.reindex(columns=X_train.columns, fill_value=0)
+
+        # --- RandomForestRegressor
+        from sklearn.ensemble import RandomForestRegressor
+        from sklearn.metrics import mean_absolute_error, mean_squared_error
+        import numpy as np
+
+        rf = RandomForestRegressor(n_estimators=200, max_depth=6, random_state=42)
+        rf.fit(X_train, y_train)
+        y_pred = rf.predict(X_test)
+
+        # --- SMAPE function
+        def smape(y_true, y_pred):
+            return 100*np.mean(2*np.abs(y_pred - y_true) / (np.abs(y_true) + np.abs(y_pred)))
+
+        # --- Tính metrics từng phân khúc
+        segments = weekly_segment_sales['Segment'].unique()
+        segment_metrics = []
+
+        for seg in segments:
+            mask = test_df['Segment'] == seg
+            y_true_seg = y_test[mask].values
+            y_pred_seg = y_pred[mask]
+            mae_seg = mean_absolute_error(y_true_seg, y_pred_seg)
+            rmse_seg = np.sqrt(mean_squared_error(y_true_seg, y_pred_seg))
+            smape_seg = smape(y_true_seg, y_pred_seg)
+            acc_seg = 100 - smape_seg
+            segment_metrics.append({
+                'Segment': seg,
+                'MAE': mae_seg,
+                'RMSE': rmse_seg,
+                'SMAPE (%)': smape_seg,
+                'Accuracy (%)': acc_seg
+            })
+
+        segment_metrics_df = pd.DataFrame(segment_metrics)
+        st.subheader("📊 Độ chính xác dự báo theo từng phân khúc")
+        st.dataframe(segment_metrics_df)
+
+        # --- Vẽ biểu đồ dự báo vs thực tế từng phân khúc
+        plot_df = test_df.copy()
+        plot_df['yhat'] = y_pred
+        plot_df_melt = pd.melt(plot_df, id_vars=['ds','Segment'], value_vars=['y','yhat'], var_name='Type', value_name='Sales')
+        plot_df_melt['Type'] = plot_df_melt['Type'].map({'y':'Actual','yhat':'Forecast'})
+
+        import plotly.express as px
+        fig = px.line(plot_df_melt, x='ds', y='Sales', color='Type', line_dash='Segment', markers=True)
+        st.plotly_chart(fig)
 
     if show_summary:
         st.title("báo cáo và lời khuyên")
         summary, actions = generate_insights(df_filtered)
 
-        st.header("Executive Summary")
         st.markdown(f"### {summary['profit_status']}")
         st.metric("Tổng Sales", f"{summary['total_sales']:,} USD")
         st.metric("Tổng Profit", f"{summary['total_profit']:,} USD")

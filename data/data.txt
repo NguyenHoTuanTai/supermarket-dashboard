@@ -1,0 +1,184 @@
+1. Row ID
+
+Mã số dòng dữ liệu (dùng để phân biệt từng hàng).
+✔ Không quan trọng trong phân tích.
+
+🟦 2. Order ID
+
+Mã đơn hàng.
+✔ Một Order ID có thể chứa nhiều dòng → mỗi dòng là một sản phẩm trong đơn.
+
+🟦 3. Order Date
+
+Ngày khách hàng đặt hàng.
+✔ Dùng cho phân tích thời gian (theo tháng, năm, quý).
+✔ Dùng để dự báo doanh thu.
+
+🟦 4. Ship Date
+
+Ngày hàng được gửi đi.
+✔ Dùng để đo tốc độ xử lý đơn hàng.
+✔ Dùng để tính delivery time = Ship Date – Order Date.
+
+🟦 5. Ship Mode
+
+Phương thức vận chuyển:
+
+Second Class
+
+Standard Class
+
+First Class
+
+Same Day
+
+✔ Dùng để phân tích chi phí và tốc độ vận chuyển.
+
+🟦 6. Customer ID
+
+ID của khách hàng.
+
+🟦 7. Customer Name
+
+Tên khách hàng.
+
+✔ Dùng để phân tích top khách hàng.
+
+🟦 8. Segment
+
+Loại khách hàng:
+
+Consumer
+
+Corporate
+
+Home Office
+
+✔ Dùng để phân tích phân khúc khách hàng.
+
+🟦 9. City
+
+Thành phố — dùng để phân tích theo địa phương.
+
+🟦 10. State
+
+Bang — Mỹ và một số quốc gia.
+
+🟦 11. Country
+
+Quốc gia của đơn hàng.
+
+🟦 12. Postal Code
+
+Mã bưu điện.
+
+🟦 13. Market
+
+Khu vực thị trường:
+
+US
+
+EU
+
+APAC
+
+LATAM
+
+Africa
+
+EMEA
+
+Canada
+
+✔ Rất phù hợp để làm dashboard theo thị trường toàn cầu.
+
+🟦 14. Region
+
+Tiểu vùng (ví dụ: West, East, South, Central).
+
+✔ Dùng để phân tích theo khu vực nhỏ hơn Market.
+
+🟦 15. Product ID
+
+ID của sản phẩm.
+
+🟦 16. Category
+
+Danh mục chính:
+
+Furniture
+
+Office Supplies
+
+Technology
+
+🟦 17. Sub-Category
+
+Danh mục con của Category, ví dụ:
+
+Chairs
+
+Binders
+
+Phones
+
+Storage
+
+Accessories
+
+✔ Rất quan trọng cho phân tích chi tiết sản phẩm.
+
+🟦 18. Product Name
+
+Tên sản phẩm đầy đủ.
+
+🟦 19. Sales
+
+💵 Doanh thu trên dòng sản phẩm.
+
+🟦 20. Quantity
+
+Số lượng sản phẩm bán ra.
+
+🟦 21. Discount
+
+Mức giảm giá trong đơn hàng (% dạng thập phân).
+Ví dụ:
+
+0.2 = giảm 20%
+
+0.0 = không giảm giá
+
+🟦 22. Profit
+
+💰 Lợi nhuận của dòng sản phẩm.
+Công thức thường là:
+
+Profit = Sales – Cost
+
+
+✔ Cột quan trọng nhất trong phân tích lợi nhuận.
+
+🟦 23. Shipping Cost
+
+Chi phí vận chuyển.
+
+✔ Có thể phân tích:
+
+Chi phí vận chuyển theo Ship Mode
+
+Chi phí vận chuyển theo City/Region
+
+🟦 24. Order Priority
+
+Mức độ ưu tiên của đơn hàng:
+
+Critical
+
+High
+
+Medium
+
+Low
+
+✔ Dùng để phân tích SLA và tốc độ xử lý đơn.

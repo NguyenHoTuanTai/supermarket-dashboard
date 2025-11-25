@@ -1,18 +1,50 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+from datetime import datetime
+import os
 
-# --- PHẢI ĐỂ LÊN TRÊN CÙNG ---
 st.set_page_config(
     page_title="Product View",
     layout="wide"   
 )
 
-# --- Kiểm tra login ---
-if "role" not in st.session_state:
-    st.switch_page("login.py")
+cart_file = r"D:/1.3/1.3/data/cart.csv"
 
-if st.session_state["role"] == "user":
+# Tạo file cart nếu chưa có hoặc nếu rỗng
+if not os.path.exists(cart_file) or os.path.getsize(cart_file) == 0:
+    pd.DataFrame(columns=[
+        "Customer Name", "Product Name", "Product ID",
+        "Category", "Sub-Category", "Quantity"
+    ]).to_csv(cart_file, index=False)
+
+if "username" not in st.session_state or st.session_state["username"] is None:
+    st.warning("Bạn chưa đăng nhập.")
+    st.stop()
+
+if "role" not in st.session_state or st.session_state["role"] is None:
+    st.warning("Bạn chưa đăng nhập.")
+    st.stop()
+
+username = st.session_state["username"]
+role = st.session_state["role"]
+
+if role != "user":
+    st.error("❌ Trang này chỉ dành cho USER.")
+    st.stop()
+
+# Load giỏ hàng lên session_state khi mở trang
+cart_df = pd.read_csv(cart_file)
+
+# Lọc giỏ hàng của user hiện tại
+user_cart = cart_df[cart_df["Customer Name"] == username]
+
+# Lưu vào session_state
+st.session_state["cart_items"] = user_cart.to_dict(orient="records")
+st.session_state["cart_count"] = user_cart["Quantity"].sum() if not user_cart.empty else 0
+
+# Ẩn sidebar cho user
+if role == "user":
     st.markdown("""
         <style>
             [data-testid="stSidebarNav"] ul li:nth-child(1),
@@ -23,31 +55,27 @@ if st.session_state["role"] == "user":
         </style>
     """, unsafe_allow_html=True)
 
-if st.session_state["role"] != "user":
-    st.error("❌ Trang này chỉ dành cho USER.")
-    st.stop()
-
-# user thì ẩn "app"
-if st.session_state["role"] == "user":
-    st.markdown("""
-    <style>
-        section[data-testid="stSidebar"] ul li:nth-child(2) {
-            display: none !important;
-        }
-    </style>
-    """, unsafe_allow_html=True)
-
-# --- Khởi tạo giỏ hàng & purchased ---
+# Khởi tạo giỏ hàng & purchased nếu chưa có
 if "cart_count" not in st.session_state:
     st.session_state["cart_count"] = 0
+
 if "cart_items" not in st.session_state:
-    st.session_state["cart_items"] = []
+    # Lấy từ CSV nếu username đã có
+    username = st.session_state.get("username", None)
+    if username is not None:
+        cart_file = r"D:/1.3/1.3/data/cart.csv"
+        if os.path.exists(cart_file) and os.path.getsize(cart_file) > 0:
+            cart_df = pd.read_csv(cart_file)
+            user_cart = cart_df[cart_df["Customer Name"] == username]
+            st.session_state["cart_items"] = user_cart.to_dict(orient="records")
+        else:
+            st.session_state["cart_items"] = []
+    else:
+        st.session_state["cart_items"] = []
+
 if "purchased" not in st.session_state:
     st.session_state["purchased"] = []
 
-username = st.session_state["username"]
-
-# --- CSS + Logout + Giỏ hàng góc phải ---
 st.markdown("""
 <style>
 .fixed-top-right {
@@ -57,18 +85,16 @@ st.markdown("""
     z-index: 999;
     display: flex;
     align-items: center;
-    gap: 10px;  /* khoảng cách giữa giỏ hàng và logout */
+    gap: 10px;
 }
-
 .cart-box {
     font-size: 18px;
     background-color: white;
     padding: 5px 10px;
     border-radius: 5px;
     box-shadow: 1px 1px 5px rgba(0,0,0,0.3);
-    white-space: nowrap;  /* không giãn rộng */
+    white-space: nowrap;
 }
-
 .logout-btn {
     background-color: #ff4b4b;
     color: white;
@@ -79,12 +105,10 @@ st.markdown("""
     box-shadow: 1px 1px 5px rgba(0,0,0,0.3);
     font-size: 15px;
 }
-
 .logout-btn:hover {
     background-color: #ff1f1f;
 }
 </style>
-
 <div class="fixed-top-right">
     <div class="cart-box">
         🛒 <span style="color:red; font-weight:bold;">{st.session_state['cart_count']}</span>
@@ -94,20 +118,16 @@ st.markdown("""
 
 col1, col2, col3 = st.columns([7, 1, 2])
 with col2:
-    st.markdown(
-        f'<div class="cart-box">🛒 <span style="color:red; font-weight:bold;">{st.session_state["cart_count"]}</span></div>',
-        unsafe_allow_html=True
-    )
+    if st.button(f"🛒 {st.session_state['cart_count']}"):
+        st.session_state["show_cart"] = True
+        st.switch_page("pages/cart")
 with col3:
     if st.button("🚪 Logout", key="logout_btn"):
         st.session_state.clear()
         st.switch_page("login.py")
 
+st.title("Dashboard Supermarket")
 
-# --- UI chính ---
-st.title("📊 Dashboard Supermarket")
-
-# --- Load dữ liệu ---
 df = pd.read_csv(
     "data/Global_Superstore2.csv",
     encoding="ISO-8859-1",
@@ -115,8 +135,8 @@ df = pd.read_csv(
     dayfirst=True
 )
 
-# --- Top 20 sản phẩm bán chạy ---
-st.subheader("🔥 Top 20 sản phẩm bán chạy nhất")
+#Top 20 sản phẩm bán chạy 
+st.subheader("Top 20 sản phẩm bán chạy nhất")
 
 top_products = (
     df.groupby("Product Name")
@@ -142,16 +162,16 @@ fig = px.bar(
 fig.update_layout(yaxis=dict(autorange="reversed"), height=600)
 st.plotly_chart(fig, use_container_width=True)
 
-# --- Search + Chi tiết sản phẩm ---
-st.subheader("🔍 Khám phá sản phẩm")
+# Search + Chi tiết sản phẩm
+st.subheader("Khám phá sản phẩm")
 
 search_query = st.text_input("Tìm sản phẩm bất kỳ", "")
 
-# Bộ lọc Category
+# lọc Category
 categories = ["Tất cả"] + sorted(df["Category"].unique())
 selected_category = st.selectbox("Lọc theo Category", categories)
 
-# Bộ lọc Sub-Category phụ thuộc Category
+# lọc Sub-Category phụ thuộc Category
 if selected_category != "Tất cả":
     subcats = df[df["Category"] == selected_category]["Sub-Category"].unique()
 else:
@@ -175,12 +195,12 @@ if selected_category != "Tất cả":
 # Áp dụng lọc Sub-Category
 if selected_subcat != "Tất cả":
     all_products = all_products[all_products["Sub-Category"] == selected_subcat]
+
 # Áp dụng lọc theo từ khóa
 if search_query:
     all_products = all_products[all_products["Product Name"].str.contains(search_query, case=False, na=False)]
     
 products_display = all_products.copy()
-
 
 if not products_display.empty:
     st.dataframe(products_display, height=600)
@@ -197,62 +217,72 @@ if not products_display.empty:
         f"**Tổng Sales:** ${product_info['Sales']:,.2f}"
     )
 
-    # --- Thêm vào giỏ + Mua ngay ---
+    # thêm vào giỏ + Mua ngay
     def add_to_cart():
-        st.session_state["cart_count"] += 1
-        st.session_state["cart_items"].append({
-            "Product Name": product_info['Product Name'],
-            "Product ID": product_info['Product ID'],
-            "Category": product_info['Category'],
-            "Sub-Category": product_info['Sub-Category']
-        })
-        st.success(f"✅ {selected_product} đã thêm vào giỏ hàng!")
+        cart_df = pd.read_csv(cart_file)
+        user_cart = cart_df[cart_df["Customer Name"] == username]
+        existed = user_cart[user_cart["Product Name"] == selected_product]
 
+        if not existed.empty:
+            idx = existed.index[0]
+            cart_df.loc[idx, "Quantity"] += 1
+        else:
+            new_item = {
+                "Customer Name": username,
+                "Product Name": product_info["Product Name"],
+                "Product ID": product_info["Product ID"],
+                "Category": product_info["Category"],
+                "Sub-Category": product_info["Sub-Category"],
+                "Quantity": 1
+            }
+            cart_df = pd.concat([cart_df, pd.DataFrame([new_item])], ignore_index=True)
+
+        cart_df.to_csv(cart_file, index=False)
+
+        user_cart = cart_df[cart_df["Customer Name"] == username]
+        st.session_state["cart_items"] = user_cart.to_dict(orient="records")
+        st.session_state["cart_count"] = user_cart["Quantity"].sum()
+        
     def buy_now():
-        row = df[df["Product Name"] == selected_product].iloc[0].copy()
-
-        # Cập nhật thông tin người mua và đơn hàng
-        row["Customer Name"] = username
-        row["Order ID"] = f"BUY-{pd.Timestamp.now().strftime('%Y%m%d%H%M%S%f')}"
-        row["Order Date"] = pd.Timestamp.now()
-        row["Ship Date"] = pd.Timestamp.now()
-
-        # Thêm vào session_state
-        st.session_state["purchased"].append(row)
-
-        # --- Cập nhật CSV ---
-        csv_file = "data/Global_Superstore2.csv"
-        try:
-            df_existing = pd.read_csv(csv_file, encoding="ISO-8859-1", parse_dates=["Order Date", "Ship Date"])
-            df_updated = pd.concat([df_existing, pd.DataFrame([row])], ignore_index=True)
-            df_updated.to_csv(csv_file, index=False, encoding="ISO-8859-1")
-        except Exception as e:
-            st.error(f"❌ Lỗi khi cập nhật CSV: {e}")
+        product_rows = df[df["Product Name"] == selected_product]
+        if product_rows.empty:
+            st.error("Không tìm thấy sản phẩm.")
             return
 
-        # --- Thông báo modal ---
-        placeholder = st.empty()
-        with placeholder.container():
-            st.markdown(
-                f"""
-                <div style="padding:20px; border:2px solid #4CAF50; border-radius:10px; background-color:#d4edda; color:#155724;">
-                    🎉 Bạn đã mua <b>{selected_product}</b> thành công!
-                </div>
-                """
-                , unsafe_allow_html=True)
-            if st.button("✅ Xác nhận"):
-                placeholder.empty()
-                st.switch_page("pages/my_orders.py")
+        csv_file = "data/Global_Superstore2.csv"
+        df_existing = pd.read_csv(csv_file, encoding="ISO-8859-1")
+        today = datetime.now()
 
+        existed_order = df_existing[
+            (df_existing["Customer Name"] == username) &
+            (df_existing["Product Name"] == selected_product)
+        ]
 
+        if not existed_order.empty:
+            row = existed_order.iloc[0].copy()
+            row["Order Date"] = today
+            row["Ship Date"] = today
+            df_existing.loc[existed_order.index[0], ["Order Date", "Ship Date"]] = [today, today]
+            df_existing.to_csv(csv_file, index=False, encoding="ISO-8859-1")
+        else:
+            row = product_rows.drop_duplicates(subset=["Product Name"]).iloc[0].copy()
+            row["Customer Name"] = username
+            row["Order ID"] = f"BUY-{today.strftime('%Y%m%d%H%M%S%f')}"
+            row["Order Date"] = today
+            row["Ship Date"] = today
 
-    col1, col2 = st.columns([1, 1])
+            df_updated = pd.concat([df_existing, pd.DataFrame([row])], ignore_index=True)
+            df_updated.to_csv(csv_file, index=False, encoding="ISO-8859-1")
+
+        st.session_state["purchased"].append(row)
+        st.switch_page("pages/my_orders.py")
+
+    col1, col2, col3 = st.columns([1, 2, 7])
     with col1:
-        st.button("🛒 Thêm vào giỏ", on_click=add_to_cart)
+        st.button("🛒", on_click=add_to_cart)
     with col2:
-        st.button("🛍️ Mua ngay", on_click=buy_now)
+        st.button("Mua ngay", on_click=buy_now)
 
-    # --- Đơn hàng liên quan ---
     related_orders = df[df["Product Name"] == selected_product]
-    with st.expander(f"📄 {len(related_orders)} đơn hàng liên quan đến sản phẩm này"):
+    with st.expander(f"{len(related_orders)} đơn hàng liên quan đến sản phẩm này"):
         st.dataframe(related_orders, height=400)

@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 
+st.set_page_config(page_title="Login", page_icon="🔐")
+
 # ẩn khi chưa đăng nhập
 if "role" not in st.session_state:
     st.markdown("""
@@ -13,8 +15,6 @@ if "role" not in st.session_state:
             }
         </style>
     """, unsafe_allow_html=True)
-
-st.set_page_config(page_title="Login", page_icon="🔐")
 
 
 # Load dữ liệu khách hàng
@@ -50,7 +50,7 @@ if st.button("Đăng nhập"):
     ]
 
     if user_row.empty:
-        st.error("❌ Sai tài khoản hoặc mật khẩu!")
+        st.error("Sai tài khoản hoặc mật khẩu!")
     else:
         st.session_state["Customer Name"] = username
         st.session_state["role"] = role

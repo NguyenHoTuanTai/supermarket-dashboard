@@ -15,7 +15,7 @@ cart_file = r"D:/1.3/1.3/data/cart.csv"
 if not os.path.exists(cart_file) or os.path.getsize(cart_file) == 0:
     pd.DataFrame(columns=[
         "Customer Name", "Product Name", "Product ID",
-        "Category", "Sub-Category", "Quantity"
+        "Category", "Sub-Category", "Quantity", "Price"
     ]).to_csv(cart_file, index=False)
 
 if "username" not in st.session_state or st.session_state["username"] is None:
@@ -119,8 +119,7 @@ st.markdown("""
 col1, col2, col3 = st.columns([7, 1, 2])
 with col2:
     if st.button(f"🛒 {st.session_state['cart_count']}"):
-        st.session_state["show_cart"] = True
-        st.switch_page("pages/cart")
+        st.switch_page("pages/cart.py")
 with col3:
     if st.button("🚪 Logout", key="logout_btn"):
         st.session_state.clear()
@@ -223,6 +222,20 @@ if not products_display.empty:
         user_cart = cart_df[cart_df["Customer Name"] == username]
         existed = user_cart[user_cart["Product Name"] == selected_product]
 
+        # Lấy dòng sản phẩm đầu tiên để tính giá
+        product_rows = df[df["Product Name"] == selected_product]
+
+        if not product_rows.empty:
+            row = product_rows.iloc[0]
+            try:
+                unit_price = float(row["Sales"]) / float(row["Quantity"])
+            except (ZeroDivisionError, KeyError, ValueError):
+                unit_price = 0
+        else:
+            unit_price = 0
+
+        unit_price = round(unit_price, 2)
+
         if not existed.empty:
             idx = existed.index[0]
             cart_df.loc[idx, "Quantity"] += 1
@@ -233,16 +246,19 @@ if not products_display.empty:
                 "Product ID": product_info["Product ID"],
                 "Category": product_info["Category"],
                 "Sub-Category": product_info["Sub-Category"],
-                "Quantity": 1
+                "Quantity": 1,
+                "Price": unit_price
             }
             cart_df = pd.concat([cart_df, pd.DataFrame([new_item])], ignore_index=True)
 
+        # Lưu lại CSV
         cart_df.to_csv(cart_file, index=False)
 
+        # Cập nhật lại session_state
         user_cart = cart_df[cart_df["Customer Name"] == username]
         st.session_state["cart_items"] = user_cart.to_dict(orient="records")
         st.session_state["cart_count"] = user_cart["Quantity"].sum()
-        
+
     def buy_now():
         product_rows = df[df["Product Name"] == selected_product]
         if product_rows.empty:

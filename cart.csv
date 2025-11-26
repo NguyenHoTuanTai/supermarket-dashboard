@@ -1,4 +1,3 @@
-Row ID,Order ID,Order Date,Ship Date,Ship Mode,Customer ID,Customer Name,Segment,City,State,Country,Postal Code,Market,Region,Product ID,Category,Sub-Category,Product Name,Sales,Quantity,Discount,Profit,Shipping Cost,Order Priority
-,,,,,,Thomas Boland,,,,,,,,OFF-PA-10003424,Office Supplies,Paper,"""While you Were Out"" Message Book, One Form per Page",,2,,,,
-,,,,,,Thomas Boland,,,,,,,,OFF-EN-10002312,Office Supplies,Envelopes,#10 Self-Seal White Envelopes,,1,,,,
-,,,,,,Thomas Boland,,,,,,,,OFF-EN-10001137,Office Supplies,Envelopes,"#10 Gummed Flap White Envelopes, 100/Box",,1,,,,
+Customer Name,Product Name,Product ID,Category,Sub-Category,Quantity,Price
+Thomas Boland,"""While you Were Out"" Message Book, One Form per Page",OFF-PA-10003424,Office Supplies,Paper,1,2.97
+Thomas Boland,"#10 White Business Envelopes,4 1/8 x 9 1/2",OFF-EN-10004483,Office Supplies,Envelopes,1,15.67

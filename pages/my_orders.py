@@ -7,23 +7,39 @@ st.set_page_config(
 )
 st.title("Đơn hàng của bạn")
 
+username = st.session_state.get("Customer Name")
+role = st.session_state.get("role")
 # --- Kiểm tra login ---
 if "role" not in st.session_state or st.session_state["role"] != "user":
     st.warning("Bạn phải đăng nhập bằng tài khoản user để xem trang này.")
     st.stop()
 
-username = st.session_state["username"]
+
+col1, col2, col3 = st.columns([8, 1, 1])
+
+with col3:
+    if st.button("⚙️"):
+        st.session_state.show_menu = not st.session_state.get("show_menu", False)
+
+    if st.session_state.get("show_menu", False):
+        if st.button("Đổi mật khẩu"):
+            st.switch_page("pages/change_password.py")
+        if st.button("Đăng xuất"):
+            st.session_state.clear()
+            st.switch_page("login.py")
 
 # Ẩn sidebar cho user
-st.markdown("""
-    <style>
-        [data-testid="stSidebarNav"] ul li:nth-child(1),
-        [data-testid="stSidebarNav"] ul li:nth-child(2)
-        {
-            display: none !important;
-        }
-    </style>
-""", unsafe_allow_html=True)
+if role == "user":
+    st.markdown("""
+        <style>
+            [data-testid="stSidebarNav"] ul li:nth-child(1),
+            [data-testid="stSidebarNav"] ul li:nth-child(4),
+            [data-testid="stSidebarNav"] ul li:nth-child(2)
+            {
+                display: none !important;
+            }
+        </style>
+    """, unsafe_allow_html=True)
 
 # --- Đọc từ CSV ---
 df = pd.read_csv(

@@ -5,27 +5,43 @@ from datetime import datetime
 
 st.title("🛒 Giỏ hàng của bạn")
 
-# KIỂM TRA LOGIN
-if "username" not in st.session_state or st.session_state["username"] is None:
+
+
+
+
+username = st.session_state.get("Customer Name")
+role = st.session_state.get("role")
+
+if not username or not role:
     st.warning("Bạn chưa đăng nhập.")
     st.stop()
 
-if "role" not in st.session_state or st.session_state["role"] != "user":
-    st.error("❌ Trang này chỉ dành cho USER.")
-    st.stop()
+col1, col2, col3 = st.columns([8, 1, 1])
 
-username = st.session_state["username"]
+with col3:
+    if st.button("⚙️"):
+        st.session_state.show_menu = not st.session_state.get("show_menu", False)
+
+    if st.session_state.get("show_menu", False):
+        if st.button("Đổi mật khẩu"):
+            st.switch_page("pages/change_password.py")
+        if st.button("Đăng xuất"):
+            st.session_state.clear()
+            st.switch_page("login.py")
+
 
 # Ẩn sidebar admin
-st.markdown("""
-    <style>
-        [data-testid="stSidebarNav"] ul li:nth-child(1),
-        [data-testid="stSidebarNav"] ul li:nth-child(2)
-        {
-            display: none !important;
-        }
-    </style>
-""", unsafe_allow_html=True)
+if role == "user":
+    st.markdown("""
+        <style>
+            [data-testid="stSidebarNav"] ul li:nth-child(1),
+            [data-testid="stSidebarNav"] ul li:nth-child(4),
+            [data-testid="stSidebarNav"] ul li:nth-child(2)
+            {
+                display: none !important;
+            }
+        </style>
+    """, unsafe_allow_html=True)
 
 cart_file = "data/cart.csv"
 

@@ -291,7 +291,6 @@ if not products_display.empty:
             df_updated.to_csv(csv_file, index=False, encoding="ISO-8859-1")
 
         st.session_state["purchased"].append(row)
-        st.switch_page("pages/my_orders.py")
 
     col1, col2, col3 = st.columns([1, 2, 7])
     with col1:

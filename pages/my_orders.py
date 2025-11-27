@@ -3,37 +3,29 @@ import pandas as pd
 
 st.set_page_config(
     page_title="my_orders",
-    layout="wide"   
+    layout="wide"
 )
-st.title("📋 Đơn hàng của bạn")
+st.title("Đơn hàng của bạn")
 
 # --- Kiểm tra login ---
 if "role" not in st.session_state or st.session_state["role"] != "user":
-    st.warning("❌ Bạn phải đăng nhập bằng tài khoản user để xem trang này.")
+    st.warning("Bạn phải đăng nhập bằng tài khoản user để xem trang này.")
     st.stop()
-
-# Check login
-if "role" not in st.session_state:
-    st.switch_page("product_view.py")
-
-# --- Kiểm tra login ---
-if "role" not in st.session_state:
-    st.switch_page("login.py")
-
-if st.session_state["role"] == "user":
-    st.markdown("""
-        <style>
-            [data-testid="stSidebarNav"] ul li:nth-child(1),
-            [data-testid="stSidebarNav"] ul li:nth-child(2)
-            {
-                display: none !important;
-            }
-        </style>
-    """, unsafe_allow_html=True)
 
 username = st.session_state["username"]
 
-# --- Lấy đơn hàng từ CSV ---
+# Ẩn sidebar cho user
+st.markdown("""
+    <style>
+        [data-testid="stSidebarNav"] ul li:nth-child(1),
+        [data-testid="stSidebarNav"] ul li:nth-child(2)
+        {
+            display: none !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+# --- Đọc từ CSV ---
 df = pd.read_csv(
     "data/Global_Superstore2.csv",
     encoding="ISO-8859-1",
@@ -41,21 +33,17 @@ df = pd.read_csv(
     dayfirst=True
 )
 
-customer_data = df[df["Customer Name"] == username]
-
-# --- Nếu có đơn hàng vừa mua từ session_state, ghép vào ---
-if "purchased" in st.session_state and st.session_state["purchased"]:
-    purchased_df = pd.DataFrame(st.session_state["purchased"])
-    if not customer_data.empty:
-        customer_data_display = pd.concat([customer_data, purchased_df], ignore_index=True)
-    else:
-        customer_data_display = purchased_df
-else:
-    customer_data_display = customer_data
+# --- Chỉ lọc theo username – KHÔNG GHÉP SESSION_STATE ---
+customer_data_display = df[df["Customer Name"] == username]
 
 if customer_data_display.empty:
-    st.warning("⚠️ Bạn chưa mua sản phẩm nào.")
+    st.warning("Bạn chưa mua sản phẩm nào.")
 else:
+    # Bỏ các cột không cần
     cols_to_drop = ["Quantity", "Discount", "Profit", "Shipping Cost", "Order Priority", "Postal Code"]
-    customer_data_display = customer_data_display.drop(columns=[c for c in cols_to_drop if c in customer_data_display.columns], errors="ignore")
+    customer_data_display = customer_data_display.drop(
+        columns=[c for c in cols_to_drop if c in customer_data_display.columns],
+        errors="ignore"
+    )
+
     st.dataframe(customer_data_display, height=600)

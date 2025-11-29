@@ -3,6 +3,11 @@ import pandas as pd
 import plotly.express as px
 from datetime import datetime
 import os
+import tensorflow as tf
+import torch
+import torch.nn as nn
+from sklearn.neighbors import NearestNeighbors
+import numpy as np
 
 st.set_page_config(
     page_title="Product View",
@@ -45,7 +50,8 @@ if role == "user":
         <style>
             [data-testid="stSidebarNav"] ul li:nth-child(1),
             [data-testid="stSidebarNav"] ul li:nth-child(4),
-            [data-testid="stSidebarNav"] ul li:nth-child(2)
+            [data-testid="stSidebarNav"] ul li:nth-child(2),
+            [data-testid="stSidebarNav"] ul li:nth-child(7)
             {
                 display: none !important;
             }
@@ -226,79 +232,88 @@ if not all_products.empty:
     with col1: st.button("🛒", on_click=add_to_cart)
     with col2: st.button("Mua ngay", on_click=buy_now)
 
-    #     GỢI Ý SẢN PHẨM DỰA TRÊN LỊCH SỬ MUA
-    st.subheader("Gợi ý dành cho bạn")
+    import pickle
 
-    # Lấy lịch sử mua hàng thật từ Global_Superstore2
-    history_df = df[df["Customer Name"] == username]
+    MODEL_PATH = "deep_recommender.pth"
+    USER_ENCODER_PATH = "user_enc.pkl"
+    PRODUCT_ENCODER_PATH = "product_enc.pkl"
 
-    def suggest_from_history(history_df, all_df):
-        if history_df.empty:
+    # ===== LOAD DATAFRAME =====
+    df = pd.read_csv("D:/1.3/1.3/data/cart.csv")
+
+    # ===== LOAD ENCODERS =====
+    with open(USER_ENCODER_PATH, "rb") as f:
+        user_enc = pickle.load(f)
+
+    with open(PRODUCT_ENCODER_PATH, "rb") as f:
+        product_enc = pickle.load(f)
+
+    # ===== MODEL =====
+    class RecommenderNet(nn.Module):
+        def __init__(self, num_users, num_products, embed_size=32):
+            super().__init__()
+            self.user_embed = nn.Embedding(num_users, embed_size)
+            self.product_embed = nn.Embedding(num_products, embed_size)
+            self.fc = nn.Sequential(
+                nn.Linear(embed_size*2, 64),
+                nn.ReLU(),
+                nn.Linear(64, 1),
+                nn.Sigmoid()
+            )
+
+        def forward(self, x):
+            user = self.user_embed(x[:, 0])
+            product = self.product_embed(x[:, 1])
+            out = torch.cat([user, product], dim=1)
+            return self.fc(out)
+
+    # ===== LOAD MODEL =====
+    @st.cache_resource
+    def load_model():
+        model = RecommenderNet(
+            num_users=len(user_enc.classes_),
+            num_products=len(product_enc.classes_)
+        )
+        model.load_state_dict(torch.load(MODEL_PATH, map_location="cpu"))
+        model.eval()
+        return model
+
+    model = load_model()
+
+    # ===== GET SUGGESTIONS =====
+    def get_dl_suggestions(username, df, model, top_k=8):
+        if username not in user_enc.classes_:
             return pd.DataFrame()
 
-        cats = history_df["Category"].unique()
-        subs = history_df["Sub-Category"].unique()
-        purchased_ids = history_df["Product ID"].unique()
+        uid = torch.tensor([user_enc.transform([username])[0]])
+        all_products = torch.tensor(product_enc.transform(df["Product Name"].unique()))
+        scores = []
 
-        suggestions = all_df[
-            (
-                (all_df["Category"].isin(cats)) |
-                (all_df["Sub-Category"].isin(subs))
-            )
-            & (~all_df["Product ID"].isin(purchased_ids))
-        ]
+        with torch.no_grad():
+            for pid in all_products:
+                score = model(torch.tensor([[uid, pid]]))[0].item()
+                scores.append((pid.item(), score))
 
-        return suggestions.drop_duplicates("Product ID").head(8)
+        scores = sorted(scores, key=lambda x: x[1], reverse=True)
+        top_ids = [x[0] for x in scores[:top_k]]
+        top_products = product_enc.inverse_transform(top_ids)
+        suggestions = df[df["Product Name"].isin(top_products)].drop_duplicates("Product Name")
+        return suggestions
 
-    # Lấy suggestions
-    all_df = df.groupby("Product Name").agg({
-        "Sales": "sum",
-        "Category": "first",
-        "Sub-Category": "first",
-        "Product ID": "first"
-    }).reset_index()
-
-    suggestions = suggest_from_history(history_df, all_df)
+    # ===== DISPLAY =====
+    st.subheader("Gợi ý dành cho bạn")
+    suggestions = get_dl_suggestions(st.session_state["Customer Name"], df, model)
 
     if suggestions.empty:
-        st.info("Không có gợi ý nào dành cho bạn.")
+        st.info("Không có gợi ý.")
     else:
         cols = st.columns(4)
-
         for i, (_, row) in enumerate(suggestions.iterrows()):
             with cols[i % 4]:
-                st.markdown(row["Product Name"])
-                st.write(f"**Category:** {row['Category']}")
-                st.write(f"**Sub-Category:** {row['Sub-Category']}")
+                st.markdown(f"**{row['Product Name']}**")
+                st.write(f"Category: {row['Category']}")
+                st.write(f"Sub-Category: {row['Sub-Category']}")
 
-                # Nút thêm vào giỏ
-                if st.button("🛒 Thêm vào giỏ", key=f"suggest_add_{row['Product ID']}"):
-                    # Logic thêm vào giỏ giống phần trên
-                    cart_df = pd.read_csv(cart_file)
-                    existed = cart_df[(cart_df["Customer Name"] == username) &
-                                    (cart_df["Product Name"] == row["Product Name"])]
-
-                    price_row = df[df["Product Name"] == row["Product Name"]].iloc[0]
-                    price = round(price_row["Sales"] / price_row["Quantity"] if price_row["Quantity"] > 0 else 0, 2)
-
-                    if not existed.empty:
-                        idx = existed.index[0]
-                        cart_df.loc[idx, "Quantity"] += 1
-                    else:
-                        new_item = {
-                            "Customer Name": username,
-                            "Product Name": row["Product Name"],
-                            "Product ID": row["Product ID"],
-                            "Category": row["Category"],
-                            "Sub-Category": row["Sub-Category"],
-                            "Quantity": 1,
-                            "Price": price
-                        }
-                        cart_df = pd.concat([cart_df, pd.DataFrame([new_item])], ignore_index=True)
-
-                    cart_df.to_csv(cart_file, index=False)
-                    st.session_state["cart_items"] = cart_df[cart_df["Customer Name"] == username].to_dict("records")
-
-                    st.session_state["cart_count"] = sum([x["Quantity"] for x in st.session_state["cart_items"]])
-
+                if st.button("🛒", key=f"suggest_dl_add_{row['Product Name']}"):
+                    add_to_cart(row)
                     st.rerun()

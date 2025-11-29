@@ -36,7 +36,8 @@ if role == "user":
         <style>
             [data-testid="stSidebarNav"] ul li:nth-child(1),
             [data-testid="stSidebarNav"] ul li:nth-child(4),
-            [data-testid="stSidebarNav"] ul li:nth-child(2)
+            [data-testid="stSidebarNav"] ul li:nth-child(2),
+            [data-testid="stSidebarNav"] ul li:nth-child(7)
             {
                 display: none !important;
             }

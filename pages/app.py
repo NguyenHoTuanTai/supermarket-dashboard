@@ -39,7 +39,8 @@ if st.session_state["role"] == "admin":
             [data-testid="stSidebarNav"] ul li:nth-child(3),
             [data-testid="stSidebarNav"] ul li:nth-child(4),
             [data-testid="stSidebarNav"] ul li:nth-child(5),
-            [data-testid="stSidebarNav"] ul li:nth-child(6) {
+            [data-testid="stSidebarNav"] ul li:nth-child(6),
+            [data-testid="stSidebarNav"] ul li:nth-child(7) {
                 display: none !important;
             }
         </style>

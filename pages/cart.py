@@ -23,6 +23,8 @@ with col3:
         st.session_state.show_menu = not st.session_state.get("show_menu", False)
 
     if st.session_state.get("show_menu", False):
+        st.markdown(f"**Customer ID:** `{st.session_state.get('Customer ID', 'N/A')}`")
+        st.markdown(f"**Username :** `{st.session_state.get('Customer Name', 'N/A')}`")
         if st.button("Đổi mật khẩu"):
             st.switch_page("pages/change_password.py")
         if st.button("Đăng xuất"):

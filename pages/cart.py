@@ -112,22 +112,59 @@ if "processing_purchase" not in st.session_state:
 clicked_buy = None
 clicked_remove = None
 
+
+
+# HIỂN THỊ GIỎ HÀNG
 # HIỂN THỊ GIỎ HÀNG
 for i, item in enumerate(cart_items):
     with st.container():
-        st.write(f"**{item['Product Name']}**")
-        st.write(f"Số lượng: {item['Quantity']}")
-        st.write(f"Giá mỗi SP: ${item.get('Price', 0):,.2f}")
 
-        col1, col2 = st.columns(2)
+        # --- HEADER: Tên sản phẩm ---
+        st.write(f"### **{item['Product Name']}**")
 
-        with col1:
-            if st.button("🛒 Mua", key=f"buy_{i}"):
+        # --- GIÁ ---
+        st.write(f"**Giá: ${item.get('Price', 0):,.2f}**")
+
+        # --- 3 NÚT SỐ LƯỢNG SÁT NHAU ---
+        qty_left, qty_center, qty_right, qty_trong = st.columns([1, 0.2, 1, 7.8])
+
+        with qty_left:
+            if st.button("➖", key=f"minus_{i}", use_container_width=True):
+                if item["Quantity"] > 1:
+                    item["Quantity"] -= 1
+                    save_cart_to_file(cart_items)
+                    st.rerun()
+
+        with qty_center:
+            st.markdown(
+                f"""
+                <div style='text-align:center;
+                            font-size:20px;
+                            padding-top:6px;'>
+                    {item['Quantity']}
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+        with qty_right:
+            if st.button("➕", key=f"plus_{i}", use_container_width=True):
+                item["Quantity"] += 1
+                save_cart_to_file(cart_items)
+                st.rerun()
+
+        # --- HÀNG NÚT MUA & XÓA ---
+        btn_left, btn_trong, btn_right, btn_t = st.columns([1, 1, 1, 7])
+
+        with btn_left:
+            if st.button("🛒 Mua", key=f"buy_{i}", use_container_width=True):
                 clicked_buy = i
 
-        with col2:
-            if st.button("🗑 Xóa", key=f"del_{i}"):
+        with btn_right:
+            if st.button("🗑 Xóa", key=f"del_{i}", use_container_width=True):
                 clicked_remove = i
+
+        st.markdown("---")
 
 # XỬ LÝ MUA HÀNG
 if clicked_buy is not None:

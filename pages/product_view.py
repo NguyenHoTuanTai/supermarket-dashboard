@@ -225,3 +225,80 @@ if not all_products.empty:
     col1,col2,_ = st.columns([1,2,7])
     with col1: st.button("🛒", on_click=add_to_cart)
     with col2: st.button("Mua ngay", on_click=buy_now)
+
+    #     GỢI Ý SẢN PHẨM DỰA TRÊN LỊCH SỬ MUA
+    st.subheader("Gợi ý dành cho bạn")
+
+    # Lấy lịch sử mua hàng thật từ Global_Superstore2
+    history_df = df[df["Customer Name"] == username]
+
+    def suggest_from_history(history_df, all_df):
+        if history_df.empty:
+            return pd.DataFrame()
+
+        cats = history_df["Category"].unique()
+        subs = history_df["Sub-Category"].unique()
+        purchased_ids = history_df["Product ID"].unique()
+
+        suggestions = all_df[
+            (
+                (all_df["Category"].isin(cats)) |
+                (all_df["Sub-Category"].isin(subs))
+            )
+            & (~all_df["Product ID"].isin(purchased_ids))
+        ]
+
+        return suggestions.drop_duplicates("Product ID").head(8)
+
+    # Lấy suggestions
+    all_df = df.groupby("Product Name").agg({
+        "Sales": "sum",
+        "Category": "first",
+        "Sub-Category": "first",
+        "Product ID": "first"
+    }).reset_index()
+
+    suggestions = suggest_from_history(history_df, all_df)
+
+    if suggestions.empty:
+        st.info("Không có gợi ý nào dành cho bạn.")
+    else:
+        cols = st.columns(4)
+
+        for i, (_, row) in enumerate(suggestions.iterrows()):
+            with cols[i % 4]:
+                st.markdown(row["Product Name"])
+                st.write(f"**Category:** {row['Category']}")
+                st.write(f"**Sub-Category:** {row['Sub-Category']}")
+
+                # Nút thêm vào giỏ
+                if st.button("🛒 Thêm vào giỏ", key=f"suggest_add_{row['Product ID']}"):
+                    # Logic thêm vào giỏ giống phần trên
+                    cart_df = pd.read_csv(cart_file)
+                    existed = cart_df[(cart_df["Customer Name"] == username) &
+                                    (cart_df["Product Name"] == row["Product Name"])]
+
+                    price_row = df[df["Product Name"] == row["Product Name"]].iloc[0]
+                    price = round(price_row["Sales"] / price_row["Quantity"] if price_row["Quantity"] > 0 else 0, 2)
+
+                    if not existed.empty:
+                        idx = existed.index[0]
+                        cart_df.loc[idx, "Quantity"] += 1
+                    else:
+                        new_item = {
+                            "Customer Name": username,
+                            "Product Name": row["Product Name"],
+                            "Product ID": row["Product ID"],
+                            "Category": row["Category"],
+                            "Sub-Category": row["Sub-Category"],
+                            "Quantity": 1,
+                            "Price": price
+                        }
+                        cart_df = pd.concat([cart_df, pd.DataFrame([new_item])], ignore_index=True)
+
+                    cart_df.to_csv(cart_file, index=False)
+                    st.session_state["cart_items"] = cart_df[cart_df["Customer Name"] == username].to_dict("records")
+
+                    st.session_state["cart_count"] = sum([x["Quantity"] for x in st.session_state["cart_items"]])
+
+                    st.rerun()

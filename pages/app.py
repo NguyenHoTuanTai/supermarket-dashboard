@@ -17,6 +17,21 @@ from sklearn.cluster import KMeans
 
 st.set_page_config(page_title="Supermarket Dashboard", layout="wide")
 
+
+username = st.session_state.get("Customer Name")
+role = st.session_state.get("role")
+
+# Check login
+if not username or not role:
+    st.warning("Bạn chưa đăng nhập.")
+    st.stop()    
+
+if "role" not in st.session_state:
+    st.error("Vui lòng đăng nhập trước!")
+    st.switch_page("login.py")
+
+
+
 if st.session_state["role"] == "admin":
     st.markdown("""
         <style>
@@ -29,11 +44,6 @@ if st.session_state["role"] == "admin":
             }
         </style>
     """, unsafe_allow_html=True)
-
-# Check login
-if "role" not in st.session_state:
-    st.error("Vui lòng đăng nhập trước!")
-    st.switch_page("login.py")
 
 
 
@@ -521,7 +531,7 @@ with tab6:
 
     
 
-t1, t2,t3, t4, t5, = st.tabs(["Dự báo doanh thu", "Dự đoán khách hàng rời đi","Phân nhóm khách","Dự báo theo nhóm khách hàng","2"])
+t1, t2,t3, t4 = st.tabs(["Dự báo doanh thu", "Dự đoán khách hàng rời đi","Phân nhóm khách","Dự báo theo nhóm khách hàng"])
 
 with t1:
     st.subheader("Dự báo doanh thu 90 ngày tiếp theo (Prophet)")

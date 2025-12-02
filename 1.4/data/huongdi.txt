@@ -1,0 +1,63 @@
+1️⃣ Module: Upload & Xem dữ liệu
+
+Upload CSV (hoặc dùng train.csv có sẵn)
+
+Hiển thị bảng dữ liệu
+
+Tự động nhận diện các trường: Order Date, Ship Mode, Category, Sales…
+
+2️⃣ Module: Dashboard phân tích
+
+Gồm các biểu đồ:
+
+✔ Doanh thu theo thời gian
+
+By day / month / year
+
+Dùng Order Date
+
+✔ Doanh thu theo danh mục
+
+Category
+
+Sub-Category
+
+✔ Doanh thu theo thành phố / bang / vùng
+
+City
+
+State
+
+Region
+
+✔ Lợi nhuận theo sản phẩm
+
+Vẽ top 10 sản phẩm lãi cao nhất
+
+Top 10 lỗ nặng nhất
+
+3️⃣ Module: Bộ lọc (Filters)
+
+Người dùng chọn:
+
+Năm
+
+Category
+
+City
+
+Segment
+
+Ship Mode
+
+→ Tự động cập nhật dashboard.
+
+4️⃣ Module: Dự báo (Forecast)
+
+Dùng Sales time-series để:
+
+Dự báo doanh thu tương lai
+
+Dự báo theo tháng hoặc theo năm
+
+Mô hình: Prophet hoặc ARIMA
